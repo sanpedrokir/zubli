@@ -2,6 +2,7 @@
 
 import { useAuth, useClerk, useUser } from "@clerk/react";
 import Link from "next/link";
+import { MyPosts } from "@/features/posts/my-posts";
 import { env } from "@/lib/env";
 
 function SignedInPanel() {
@@ -19,6 +20,7 @@ function SignedInPanel() {
       >
         Sign out
       </button>
+      <MyPosts />
     </div>
   );
 }
