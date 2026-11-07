@@ -1,23 +1,41 @@
 "use client";
 
+import { useState } from "react";
 import { SignedInGate } from "@/features/auth/signed-in-gate";
 import { env } from "@/lib/env";
 import { useFeed } from "./api";
 import { FeedList } from "./feed-list";
 
-function Latest() {
-  const feed = useFeed({ mode: "latest", interestId: null, placeId: null });
-  return <FeedList query={feed} />;
+type Tab = "latest" | "following";
+
+function Feed({ tab }: { tab: Tab }) {
+  const feed = useFeed({ mode: tab });
+  return (
+    <FeedList
+      query={feed}
+      empty={tab === "following" ? "Follow people from their posts to see their finds here." : undefined}
+    />
+  );
 }
 
-/** Home "Latest" feed; renders nothing until Clerk + Neon are configured so signed-out dev still works. */
+/** Home feed: Latest from everyone, or Following. Renders nothing until Clerk + Neon are configured. */
 export function LatestFeed() {
+  const [tab, setTab] = useState<Tab>("latest");
   if (!env.clerkPublishableKey || !env.neonDataApiUrl) return null;
+  const tabClass = (t: Tab) =>
+    `min-h-11 rounded-full px-5 font-bold ${tab === t ? "bg-violet-600 text-white" : "border border-border hover:bg-surface"}`;
   return (
     <section className="mt-10">
-      <h2 className="font-display text-2xl font-extrabold">Latest</h2>
+      <div role="group" aria-label="Feed" className="flex gap-2">
+        <button type="button" aria-pressed={tab === "latest"} onClick={() => setTab("latest")} className={tabClass("latest")}>
+          Latest
+        </button>
+        <button type="button" aria-pressed={tab === "following"} onClick={() => setTab("following")} className={tabClass("following")}>
+          Following
+        </button>
+      </div>
       <SignedInGate>
-        <Latest />
+        <Feed tab={tab} />
       </SignedInGate>
     </section>
   );

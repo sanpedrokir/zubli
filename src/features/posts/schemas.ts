@@ -20,28 +20,6 @@ export const placeOptionSchema = z.object({
 });
 export type PlaceOption = z.infer<typeof placeOptionSchema>;
 
-export const POST_SELECT =
-  "id,author_id,title,body,rating,price_band,link_url,created_at,likes_count,comments_count,saves_count," +
-  "interests(id,name,slug),places(id,name,kind),profiles(display_name)";
-
-export const postSchema = z.object({
-  id: z.uuid(),
-  author_id: z.string(),
-  title: z.string(),
-  body: z.string().nullable(),
-  rating: z.number().nullable(),
-  price_band: z.number().nullable(),
-  link_url: z.string().nullable(),
-  created_at: z.string(),
-  likes_count: z.number(),
-  comments_count: z.number(),
-  saves_count: z.number(),
-  interests: z.object({ id: z.uuid(), name: z.string(), slug: z.string() }).nullable(),
-  places: z.object({ id: z.uuid(), name: z.string(), kind: z.string() }).nullable(),
-  profiles: z.object({ display_name: z.string().nullable() }).nullable(),
-});
-export type PostView = z.infer<typeof postSchema>;
-
 /** What the create form submits. Interest is required; place is optional (never compulsory). */
 export const postFormSchema = z.object({
   interest_id: z.uuid({ error: "Pick an interest" }),
@@ -54,7 +32,7 @@ export const postFormSchema = z.object({
 });
 export type PostFormValues = z.infer<typeof postFormSchema>;
 
-/** Flat row returned by the feed RPCs (db/migrations/0003_feed_rpcs.sql). */
+/** Flat row returned by every post RPC (post_feed_item in db/migrations/0004_social.sql). */
 export const feedItemSchema = z.object({
   id: z.uuid(),
   author_id: z.string(),
@@ -74,7 +52,28 @@ export const feedItemSchema = z.object({
   place_id: z.uuid().nullable(),
   place_name: z.string().nullable(),
   place_kind: z.string().nullable(),
+  liked_by_me: z.boolean(),
+  saved_by_me: z.boolean(),
 });
+
+export interface PostView {
+  id: string;
+  author_id: string;
+  title: string;
+  body: string | null;
+  rating: number | null;
+  price_band: number | null;
+  link_url: string | null;
+  created_at: string;
+  likes_count: number;
+  comments_count: number;
+  saves_count: number;
+  liked: boolean;
+  saved: boolean;
+  interests: { id: string; name: string; slug: string };
+  places: { id: string; name: string; kind: string } | null;
+  profiles: { display_name: string | null };
+}
 
 /** Keyset cursor: the last row's (created_at, id), kept as the raw strings Postgres returned. */
 export type FeedCursor = { created_at: string; id: string };
@@ -91,7 +90,23 @@ export const feedItemToPost = (r: z.infer<typeof feedItemSchema>): PostView => (
   likes_count: r.likes_count,
   comments_count: r.comments_count,
   saves_count: r.saves_count,
+  liked: r.liked_by_me,
+  saved: r.saved_by_me,
   interests: { id: r.interest_id, name: r.interest_name, slug: r.interest_slug },
   places: r.place_id && r.place_name ? { id: r.place_id, name: r.place_name, kind: r.place_kind ?? "venue" } : null,
   profiles: { display_name: r.author_name },
+});
+
+export const commentSchema = z.object({
+  id: z.uuid(),
+  post_id: z.uuid(),
+  author_id: z.string(),
+  body: z.string(),
+  created_at: z.string(),
+  profiles: z.object({ display_name: z.string().nullable() }).nullable(),
+});
+export type CommentView = z.infer<typeof commentSchema>;
+
+export const commentFormSchema = z.object({
+  body: z.string().trim().min(1, "Write something first").max(2000, "Keep it under 2000 characters"),
 });

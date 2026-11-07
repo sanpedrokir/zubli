@@ -4,7 +4,10 @@ import { useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { SignedInGate } from "@/features/auth/signed-in-gate";
 import { usePost } from "./api";
+import { CommentsSection } from "./comments-section";
+import { FollowButton } from "./follow-button";
 import { Meta } from "./post-card";
+import { PostActions } from "./post-actions";
 
 function Detail({ id }: { id: string | null }) {
   const { data: post, isPending, isError } = usePost(id);
@@ -19,7 +22,10 @@ function Detail({ id }: { id: string | null }) {
       <p className="mt-1 text-sm text-foreground/60">
         by {post.profiles?.display_name ?? "Someone"} · {new Date(post.created_at).toLocaleDateString()}
       </p>
-      {post.body && <p className="mt-4 whitespace-pre-wrap text-lg">{post.body}</p>}
+      <div className="mt-2">
+        <FollowButton authorId={post.author_id} />
+      </div>
+      {post.body &&<p className="mt-4 whitespace-pre-wrap text-lg">{post.body}</p>}
       {post.link_url && (
         <a
           href={post.link_url}
@@ -30,6 +36,8 @@ function Detail({ id }: { id: string | null }) {
           Open link
         </a>
       )}
+      <PostActions post={post} />
+      <CommentsSection postId={post.id} />
     </article>
   );
 }

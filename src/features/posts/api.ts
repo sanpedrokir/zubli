@@ -9,8 +9,6 @@ import {
   feedItemToPost,
   interestSchema,
   placeOptionSchema,
-  POST_SELECT,
-  postSchema,
   type FeedCursor,
   type PostFormValues,
 } from "./schemas";
@@ -18,6 +16,7 @@ import {
 // These hooks call useNeon()/useAuth(), so they must render under <SignedInGate>.
 
 const FIVE_MIN = 5 * 60 * 1000;
+const PAGE_SIZE = 20;
 
 export function useInterests() {
   const neon = useNeon();
@@ -58,29 +57,10 @@ export function usePost(id: string | null) {
     queryKey: ["post", id],
     enabled: id !== null,
     queryFn: async () => {
-      const { data, error } = await neon.from("posts").select(POST_SELECT).eq("id", id!).maybeSingle();
+      const { data, error } = await neon.rpc("get_post", { p_post_id: id });
       if (error) throw new Error(error.message);
-      return data ? postSchema.parse(data) : null;
-    },
-  });
-}
-
-export function useMyPosts() {
-  const neon = useNeon();
-  const { userId } = useAuth();
-  return useQuery({
-    queryKey: ["posts", "mine", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await neon
-        .from("posts")
-        .select(POST_SELECT)
-        .eq("author_id", userId!)
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(20);
-      if (error) throw new Error(error.message);
-      return z.array(postSchema).parse(data);
+      const [row] = z.array(feedItemSchema).parse(data);
+      return row ? feedItemToPost(row) : null;
     },
   });
 }
@@ -99,25 +79,38 @@ export function useCreatePost() {
   });
 }
 
-export type FeedMode = "latest" | "destination" | "interest";
-const PAGE_SIZE = 20;
+export type FeedMode = "latest" | "following" | "destination" | "interest" | "author";
 
-/** Infinite keyset-paginated feed over the M4 RPCs. `enabled` lets callers wait for required filters. */
-export function useFeed(opts: { mode: FeedMode; interestId: string | null; placeId: string | null; enabled?: boolean }) {
+/** Infinite keyset-paginated feed over the RPCs. `enabled` lets callers wait for required filters. */
+export function useFeed(opts: {
+  mode: FeedMode;
+  interestId?: string | null;
+  placeId?: string | null;
+  authorId?: string | null;
+  enabled?: boolean;
+}) {
   const neon = useNeon();
-  const { mode, interestId, placeId } = opts;
+  const { mode, interestId = null, placeId = null, authorId = null } = opts;
   return useInfiniteQuery({
-    queryKey: ["posts", "feed", mode, interestId, placeId],
+    queryKey: ["posts", "feed", mode, interestId, placeId, authorId],
     enabled: opts.enabled ?? true,
     initialPageParam: null as FeedCursor | null,
     queryFn: async ({ pageParam }) => {
-      const cursor = { p_cursor_created_at: pageParam?.created_at ?? null, p_cursor_id: pageParam?.id ?? null, p_limit: PAGE_SIZE };
+      const cursor = {
+        p_cursor_created_at: pageParam?.created_at ?? null,
+        p_cursor_id: pageParam?.id ?? null,
+        p_limit: PAGE_SIZE,
+      };
       const call =
         mode === "destination"
           ? neon.rpc("explore_destination", { p_place_id: placeId, p_interest_id: interestId, ...cursor })
           : mode === "interest"
             ? neon.rpc("explore_interest", { p_interest_id: interestId, p_place_id: placeId, ...cursor })
-            : neon.rpc("feed_latest", { p_interest_id: interestId, p_place_id: placeId, ...cursor });
+            : mode === "following"
+              ? neon.rpc("feed_following", cursor)
+              : mode === "author"
+                ? neon.rpc("posts_by_author", { p_author_id: authorId, ...cursor })
+                : neon.rpc("feed_latest", { p_interest_id: interestId, p_place_id: placeId, ...cursor });
       const { data, error } = await call;
       if (error) throw new Error(error.message);
       return z.array(feedItemSchema).parse(data);
@@ -128,4 +121,9 @@ export function useFeed(opts: { mode: FeedMode; interestId: string | null; place
     },
     select: (data) => data.pages.flat().map(feedItemToPost),
   });
+}
+
+export function useMyPosts() {
+  const { userId } = useAuth();
+  return useFeed({ mode: "author", authorId: userId ?? null, enabled: !!userId });
 }
