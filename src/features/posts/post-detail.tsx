@@ -3,12 +3,43 @@
 import { useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { SignedInGate } from "@/features/auth/signed-in-gate";
-import { usePost } from "./api";
+import { usePost, usePostMedia } from "./api";
+import type { PostView } from "./schemas";
 import { CommentsSection } from "./comments-section";
 import { FollowButton } from "./follow-button";
 import { Meta } from "./post-card";
 import { PostActions } from "./post-actions";
 import { PostVisual } from "./post-visual";
+
+/** Cover image first, then any further photos. Falls back to the interest gradient when there are none. */
+function Gallery({ post }: { post: PostView }) {
+  const media = usePostMedia(post.id);
+  const photos = media.data ?? [];
+  if (photos.length === 0) {
+    return (
+      <PostVisual
+        interestSlug={post.interests.slug}
+        src={post.cover_url}
+        alt={post.title}
+        className="mb-4 aspect-[16/9] w-full rounded-sheet shadow-soft"
+      />
+    );
+  }
+  return (
+    <ul className="mb-4 flex snap-x snap-mandatory gap-3 overflow-x-auto" aria-label="Photos">
+      {photos.map((m) => (
+        <li key={m.id} className="w-full shrink-0 snap-center">
+          <PostVisual
+            interestSlug={post.interests.slug}
+            src={m.storage_path}
+            alt={m.alt_text ?? post.title}
+            className="aspect-[16/10] w-full rounded-sheet shadow-soft"
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Detail({ id }: { id: string | null }) {
   const { data: post, isPending, isError } = usePost(id);
@@ -18,7 +49,7 @@ function Detail({ id }: { id: string | null }) {
   if (!post) return <p className="mt-6">This post doesn&apos;t exist or isn&apos;t available.</p>;
   return (
     <article className="mt-6 max-w-2xl">
-      <PostVisual interestSlug={post.interests.slug} className="mb-4 aspect-[16/9] rounded-sheet shadow-soft" />
+      <Gallery post={post} />
       <Meta post={post} />
       <h1 className="mt-3 font-display text-3xl font-extrabold">{post.title}</h1>
       <p className="mt-1 text-sm text-foreground/60">

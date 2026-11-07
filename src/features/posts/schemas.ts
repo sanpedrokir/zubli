@@ -54,6 +54,7 @@ export const feedItemSchema = z.object({
   place_kind: z.string().nullable(),
   liked_by_me: z.boolean(),
   saved_by_me: z.boolean(),
+  cover_url: z.string().nullable(),
 });
 
 export interface PostView {
@@ -70,6 +71,7 @@ export interface PostView {
   saves_count: number;
   liked: boolean;
   saved: boolean;
+  cover_url: string | null;
   interests: { id: string; name: string; slug: string };
   places: { id: string; name: string; kind: string } | null;
   profiles: { display_name: string | null };
@@ -92,6 +94,7 @@ export const feedItemToPost = (r: z.infer<typeof feedItemSchema>): PostView => (
   saves_count: r.saves_count,
   liked: r.liked_by_me,
   saved: r.saved_by_me,
+  cover_url: r.cover_url,
   interests: { id: r.interest_id, name: r.interest_name, slug: r.interest_slug },
   places: r.place_id && r.place_name ? { id: r.place_id, name: r.place_name, kind: r.place_kind ?? "venue" } : null,
   profiles: { display_name: r.author_name },
@@ -120,3 +123,20 @@ export const profileSchema = z.object({
   following_count: z.number(),
 });
 export type ProfileView = z.infer<typeof profileSchema>;
+
+export const postMediaSchema = z.object({
+  id: z.uuid(),
+  storage_path: z.string(),
+  width: z.number().nullable(),
+  height: z.number().nullable(),
+  position: z.number(),
+  alt_text: z.string().nullable(),
+});
+export type PostMediaView = z.infer<typeof postMediaSchema>;
+
+/** A photo already uploaded to Blob, ready to be attached to a post. */
+export interface UploadedPhoto {
+  url: string;
+  width: number;
+  height: number;
+}

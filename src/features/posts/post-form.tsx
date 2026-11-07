@@ -1,9 +1,11 @@
 "use client";
 
-import { ChevronLeft, ImagePlus, Star } from "lucide-react";
+import { useAuth } from "@clerk/react";
+import { ChevronLeft, ImagePlus, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCreatePost, useInterests, usePlaces } from "./api";
+import { MAX_PHOTOS, photoUploadsEnabled, uploadPhotos, validatePhoto } from "./media";
 import { PostVisual } from "./post-visual";
 import { postFormSchema, type InterestOption, type PlaceOption } from "./schemas";
 
@@ -82,6 +84,41 @@ export function PostForm() {
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { userId, getToken } = useAuth();
+  const [photos, setPhotos] = useState<{ id: string; file: File; preview: string }[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const photosRef = useRef(photos);
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
+  // Free the object URLs created for previews when the form goes away.
+  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.preview)), []);
+
+  function addPhotos(files: FileList | null) {
+    if (!files) return;
+    setPhotoError(null);
+    const next = [...photos];
+    for (const file of Array.from(files)) {
+      if (next.length >= MAX_PHOTOS) {
+        setPhotoError(`You can add up to ${MAX_PHOTOS} photos.`);
+        break;
+      }
+      const problem = validatePhoto(file);
+      if (problem) {
+        setPhotoError(problem);
+        continue;
+      }
+      next.push({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) });
+    }
+    setPhotos(next);
+  }
+
+  function removePhoto(id: string) {
+    const gone = photos.find((p) => p.id === id);
+    if (gone) URL.revokeObjectURL(gone.preview);
+    setPhotos(photos.filter((p) => p.id !== id));
+  }
 
   const interestChoices = useMemo(() => interestOptions(interests.data ?? []), [interests.data]);
   const placeChoices = useMemo(() => placeOptions(places.data ?? []), [places.data]);
@@ -110,10 +147,24 @@ export function PostForm() {
     setStep(3);
   }
 
-  function publish() {
+  async function publish() {
     const parsed = parse();
     if (!parsed.success) return setStep(2);
-    create.mutate(parsed.data, { onSuccess: (id) => router.push(`/post/?id=${id}`) });
+    setPhotoError(null);
+    let uploaded: Awaited<ReturnType<typeof uploadPhotos>> = [];
+    if (photos.length > 0) {
+      if (!userId) return setPhotoError("You're signed out. Please sign in again.");
+      setUploading(true);
+      try {
+        uploaded = await uploadPhotos(photos.map((p) => p.file), userId, () => getToken());
+      } catch (e) {
+        setPhotoError(e instanceof Error ? e.message : "Photo upload failed. Please try again.");
+        return;
+      } finally {
+        setUploading(false);
+      }
+    }
+    create.mutate({ values: parsed.data, photos: uploaded }, { onSuccess: (id) => router.push(`/post/?id=${id}`) });
   }
 
   const err = (k: string) =>
@@ -144,17 +195,52 @@ export function PostForm() {
       {step === 1 && (
         <div className="mt-6 flex flex-col gap-4">
           <h2 className="font-display text-xl font-extrabold">Add photos</h2>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              type="button"
-              disabled
-              className="flex aspect-square flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-border text-sm text-foreground/60"
-            >
-              <ImagePlus aria-hidden className="size-6" />
-              Add Photo
-            </button>
-          </div>
-          <p className={hintClass}>Photo upload is coming soon. You can share your find without photos for now.</p>
+          {photoUploadsEnabled() ? (
+            <>
+              <ul className="grid grid-cols-3 gap-3">
+                {photos.map((p, i) => (
+                  <li key={p.id} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- local blob: preview */}
+                    <img src={p.preview} alt={`Photo ${i + 1} preview`} className="aspect-square w-full rounded-card object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(p.id)}
+                      aria-label={`Remove photo ${i + 1}`}
+                      className="absolute -right-2 -top-2 flex size-8 items-center justify-center rounded-full bg-navy-900 text-white shadow-soft"
+                    >
+                      <X aria-hidden className="size-4" />
+                    </button>
+                  </li>
+                ))}
+                {photos.length < MAX_PHOTOS && (
+                  <li>
+                    <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-border text-sm text-foreground/70 hover:bg-surface focus-within:outline-2 focus-within:outline-violet-500">
+                      <ImagePlus aria-hidden className="size-6" />
+                      Add Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="sr-only"
+                        onChange={(e) => {
+                          addPhotos(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </li>
+                )}
+              </ul>
+              <p className={hintClass}>Up to {MAX_PHOTOS} photos. They&apos;re resized on your device before upload.</p>
+              {photoError && (
+                <p role="alert" className="text-sm text-coral-500">
+                  {photoError}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className={hintClass}>Photo upload isn&apos;t set up yet. You can share your find without photos.</p>
+          )}
           <button type="button" onClick={() => setStep(2)} className={primary}>
             Next: Details
           </button>
@@ -254,7 +340,7 @@ export function PostForm() {
         <div className="mt-6 flex flex-col gap-4">
           <h2 className="font-display text-xl font-extrabold">Review</h2>
           <article className="overflow-hidden rounded-sheet border border-border bg-surface shadow-soft">
-            <PostVisual interestSlug={interest?.slug ?? "other"} className="aspect-[16/9]" />
+            <PostVisual interestSlug={interest?.slug ?? "other"} src={photos[0]?.preview} alt="Cover photo preview" className="aspect-[16/9] w-full" />
             <div className="p-4">
               <p className="text-sm font-bold text-foreground/70">
                 {interest?.label ?? "—"}
@@ -265,6 +351,11 @@ export function PostForm() {
               {draft.body.trim() && <p className="mt-2 whitespace-pre-wrap">{draft.body.trim()}</p>}
             </div>
           </article>
+          {photoError && (
+            <p role="alert" className="text-sm text-coral-500">
+              {photoError}
+            </p>
+          )}
           {create.isError && (
             <p role="alert" className="text-sm text-coral-500">
               Couldn&apos;t publish: {create.error.message}
@@ -274,8 +365,8 @@ export function PostForm() {
             <button type="button" onClick={() => setStep(2)} className="inline-flex min-h-12 items-center gap-1 rounded-full border border-border px-5 font-bold hover:bg-surface">
               <ChevronLeft aria-hidden className="size-5" /> Edit
             </button>
-            <button type="button" onClick={publish} disabled={create.isPending} className={primary}>
-              {create.isPending ? "Publishing…" : "Publish"}
+            <button type="button" onClick={publish} disabled={create.isPending || uploading} className={primary}>
+              {uploading ? "Uploading photos…" : create.isPending ? "Publishing…" : "Publish"}
             </button>
           </div>
         </div>

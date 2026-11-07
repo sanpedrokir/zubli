@@ -22,7 +22,7 @@ export function PostCard({ post }: { post: PostView }) {
   return (
     <article className="flex gap-3 rounded-card border border-border bg-surface p-3 shadow-soft">
       <Link href={`/post/?id=${post.id}`} tabIndex={-1} aria-hidden className="shrink-0">
-        <PostVisual interestSlug={post.interests.slug} className="size-24 rounded-xl" />
+        <PostVisual interestSlug={post.interests.slug} src={post.cover_url} className="size-24 rounded-xl" />
       </Link>
       <div className="min-w-0 flex-1">
         <Meta post={post} />

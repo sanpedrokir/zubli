@@ -9,9 +9,11 @@ import {
   feedItemToPost,
   interestSchema,
   placeOptionSchema,
+  postMediaSchema,
   profileSchema,
   type FeedCursor,
   type PostFormValues,
+  type UploadedPhoto,
 } from "./schemas";
 
 // These hooks call useNeon()/useAuth(), so they must render under <SignedInGate>.
@@ -70,13 +72,49 @@ export function useCreatePost() {
   const neon = useNeon();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (values: PostFormValues) => {
+    mutationFn: async ({ values, photos }: { values: PostFormValues; photos: UploadedPhoto[] }) => {
       // author_id is filled by the column default auth.user_id(); clients can't send it.
       const { data, error } = await neon.from("posts").insert(values).select("id").single();
       if (error) throw new Error(error.message);
-      return z.object({ id: z.uuid() }).parse(data).id;
+      const id = z.object({ id: z.uuid() }).parse(data).id;
+      if (photos.length > 0) {
+        const { error: mediaError } = await neon.from("post_media").insert(
+          photos.map((p, position) => ({
+            post_id: id,
+            storage_path: p.url,
+            width: p.width,
+            height: p.height,
+            position,
+            alt_text: values.title,
+          })),
+        );
+        if (mediaError) {
+          // Don't leave a half-created post behind: remove it so a retry doesn't duplicate.
+          await neon.from("posts").delete().eq("id", id);
+          throw new Error(`Couldn't attach your photos: ${mediaError.message}`);
+        }
+      }
+      return id;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
+  });
+}
+
+export function usePostMedia(postId: string | null) {
+  const neon = useNeon();
+  return useQuery({
+    queryKey: ["post-media", postId],
+    enabled: postId !== null,
+    staleTime: FIVE_MIN,
+    queryFn: async () => {
+      const { data, error } = await neon
+        .from("post_media")
+        .select("id,storage_path,width,height,position,alt_text")
+        .eq("post_id", postId!)
+        .order("position");
+      if (error) throw new Error(error.message);
+      return z.array(postMediaSchema).parse(data);
+    },
   });
 }
 

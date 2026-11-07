@@ -34,7 +34,7 @@ function PostsGrid() {
         {feed.data.map((p) => (
           <li key={p.id}>
             <Link href={`/post/?id=${p.id}`} aria-label={p.title} className="block overflow-hidden rounded-card">
-              <PostVisual interestSlug={p.interests.slug} className="aspect-square" />
+              <PostVisual interestSlug={p.interests.slug} src={p.cover_url} className="aspect-square w-full" />
             </Link>
           </li>
         ))}

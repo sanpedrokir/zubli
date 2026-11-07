@@ -14,7 +14,7 @@ export function HeroCard({ post }: { post: PostView }) {
       href={`/post/?id=${post.id}`}
       className="group relative block aspect-[16/10] overflow-hidden rounded-sheet shadow-soft"
     >
-      <PostVisual interestSlug={post.interests.slug} className="absolute inset-0" />
+      <PostVisual interestSlug={post.interests.slug} src={post.cover_url} className="absolute inset-0 size-full" />
       <div className="absolute inset-0 bg-linear-to-t from-navy-900/70 via-transparent to-transparent" />
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 text-white">
         <div className="min-w-0">
@@ -45,7 +45,7 @@ function LikeCount({ post, className }: { post: PostView; className: string }) {
 export function TileCard({ post, aspect = "aspect-square" }: { post: PostView; aspect?: string }) {
   return (
     <Link href={`/post/?id=${post.id}`} className={`relative block overflow-hidden rounded-card shadow-soft ${aspect}`}>
-      <PostVisual interestSlug={post.interests.slug} className="absolute inset-0" />
+      <PostVisual interestSlug={post.interests.slug} src={post.cover_url} className="absolute inset-0 size-full" />
       <div className="absolute inset-0 bg-linear-to-t from-navy-900/70 via-transparent to-transparent" />
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-3 text-white">
         <h3 className="line-clamp-2 text-sm font-bold leading-tight">{post.title}</h3>
