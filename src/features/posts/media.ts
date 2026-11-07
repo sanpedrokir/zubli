@@ -2,6 +2,7 @@
 
 import { uploadPresigned } from "@vercel/blob/client";
 import { env } from "@/lib/env";
+import type { GeoPoint } from "./geo";
 import type { UploadedPhoto } from "./schemas";
 
 export const MAX_PHOTOS = 6;
@@ -66,4 +67,22 @@ export async function uploadPhotos(
     results.push({ url: uploaded.url, width, height });
   }
   return results;
+}
+
+/**
+ * GPS position stored in a photo's EXIF metadata (where it was taken), or null when there is none.
+ * Must be called on the ORIGINAL file: resizing in compressPhoto() re-encodes the image and drops all
+ * metadata, so the uploaded copy never carries exact coordinates.
+ */
+export async function readPhotoGps(file: File): Promise<GeoPoint | null> {
+  try {
+    const { gps } = await import("exifr");
+    const result = await gps(file);
+    if (result && Number.isFinite(result.latitude) && Number.isFinite(result.longitude)) {
+      return { lat: result.latitude, lng: result.longitude };
+    }
+  } catch {
+    /* unreadable file or no metadata: treat as "no location" */
+  }
+  return null;
 }

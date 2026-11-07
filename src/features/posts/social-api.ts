@@ -1,9 +1,8 @@
 "use client";
 
-import { useAuth } from "@clerk/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { useNeon } from "@/lib/neon/use-neon";
+import { useNeon, useSession } from "@/lib/neon/use-neon";
 import { commentSchema, type CommentView, type PostView } from "./schemas";
 
 // Social state lives in small per-post / per-author caches so every card showing the same post
@@ -75,7 +74,7 @@ const followingKey = (userId: string | null | undefined, authorId: string) => ["
 
 export function useIsFollowing(authorId: string) {
   const neon = useNeon();
-  const { userId } = useAuth();
+  const { userId } = useSession();
   return useQuery({
     queryKey: followingKey(userId, authorId),
     enabled: !!userId && userId !== authorId,
@@ -96,7 +95,7 @@ export function useIsFollowing(authorId: string) {
 export function useToggleFollow(authorId: string) {
   const neon = useNeon();
   const qc = useQueryClient();
-  const { userId } = useAuth();
+  const { userId } = useSession();
   const key = followingKey(userId, authorId);
   return useMutation({
     mutationFn: async (on: boolean) => {

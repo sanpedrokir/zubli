@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { SignedInGate } from "@/features/auth/signed-in-gate";
+import { DataGate } from "@/features/auth/signed-in-gate";
 import { useInterests, usePlaces } from "@/features/posts/api";
 import { interestStyle } from "@/features/posts/interest-style";
 
@@ -80,12 +80,12 @@ export function ExploreHub() {
           Interests
         </Link>
       </nav>
-      <SignedInGate>
+      <DataGate>
         <h2 className="mt-6 font-display text-xl font-extrabold">Top Destinations</h2>
         <Destinations />
         <h2 className="mt-6 font-display text-xl font-extrabold">Explore by Interest</h2>
         <InterestGrid />
-      </SignedInGate>
+      </DataGate>
     </section>
   );
 }

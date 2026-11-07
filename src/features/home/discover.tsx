@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SignedInGate } from "@/features/auth/signed-in-gate";
+import { DataGate, SignInPrompt } from "@/features/auth/signed-in-gate";
 import { useFeed, useInterests } from "@/features/posts/api";
 import { interestStyle } from "@/features/posts/interest-style";
 import { PostCard } from "@/features/posts/post-card";
 import { HeroCard, TileCard } from "@/features/posts/post-tiles";
+import { useSession } from "@/lib/neon/use-neon";
 
 type Filter = { kind: "forYou" } | { kind: "following" } | { kind: "interest"; id: string };
 
@@ -13,10 +14,13 @@ const chipBase = "inline-flex min-h-11 shrink-0 items-center rounded-full px-4 f
 
 function Feed() {
   const interests = useInterests();
+  const { isSignedIn } = useSession();
   const [filter, setFilter] = useState<Filter>({ kind: "forYou" });
+  const needsSignIn = filter.kind === "following" && !isSignedIn;
   const feed = useFeed({
     mode: filter.kind === "following" ? "following" : filter.kind === "interest" ? "interest" : "latest",
     interestId: filter.kind === "interest" ? filter.id : null,
+    enabled: !needsSignIn,
   });
 
   const posts = useMemo(() => feed.data ?? [], [feed.data]);
@@ -52,9 +56,10 @@ function Feed() {
         })}
       </div>
 
-      {feed.isPending && <p className="mt-6 text-foreground/70">Loading…</p>}
-      {feed.isError && <p role="alert" className="mt-6">Couldn&apos;t load posts. Please try again.</p>}
-      {feed.isSuccess && posts.length === 0 && (
+      {needsSignIn && <SignInPrompt message="Sign in to see posts from people you follow." />}
+      {!needsSignIn && feed.isPending && <p className="mt-6 text-foreground/70">Loading…</p>}
+      {!needsSignIn && feed.isError && <p role="alert" className="mt-6">Couldn&apos;t load posts. Please try again.</p>}
+      {!needsSignIn && feed.isSuccess && posts.length === 0 && (
         <p className="mt-6 text-foreground/70">
           {filter.kind === "following"
             ? "Follow people from their posts to see their finds here."
@@ -113,9 +118,9 @@ export function Discover() {
     <section>
       <h1 className="font-display text-4xl font-extrabold">Discover</h1>
       <p className="mt-1 text-foreground/70">Found something good? See what people love.</p>
-      <SignedInGate>
+      <DataGate>
         <Feed />
-      </SignedInGate>
+      </DataGate>
     </section>
   );
 }

@@ -1,12 +1,23 @@
 "use client";
 
-import { useAuth } from "@clerk/react";
+import Link from "next/link";
+import { useSession } from "@/lib/neon/use-neon";
 import { useIsFollowing, useToggleFollow } from "./social-api";
 
-/** Hidden on your own posts. */
+/** Hidden on your own posts; visitors are sent to sign in. */
 export function FollowButton({ authorId }: { authorId: string }) {
-  const { userId } = useAuth();
-  if (!userId || userId === authorId) return null;
+  const { userId, isSignedIn } = useSession();
+  if (userId === authorId) return null;
+  if (!isSignedIn) {
+    return (
+      <Link
+        href="/sign-in/"
+        className="inline-flex min-h-11 items-center rounded-full bg-violet-600 px-5 font-bold text-white shadow-soft hover:bg-violet-500"
+      >
+        Follow
+      </Link>
+    );
+  }
   return <Button authorId={authorId} />;
 }
 

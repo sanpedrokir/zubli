@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/lib/neon/use-neon";
 import type { PostView } from "./schemas";
 import { useEngagement, useToggleEngagement } from "./social-api";
 
@@ -10,6 +12,10 @@ const btn =
 /** Like / save / comment count. Optimistic: the UI updates immediately and rolls back on error. */
 export function PostActions({ post }: { post: PostView }) {
   const e = useEngagement(post);
+  const { isSignedIn } = useSession();
+  const router = useRouter();
+  // Visitors can look, but liking and saving need an account.
+  const act = (fn: () => void) => (isSignedIn ? fn() : router.push("/sign-in/"));
   const like = useToggleEngagement("like", post.id);
   const save = useToggleEngagement("save", post.id);
   const failed = like.isError || save.isError;
@@ -20,7 +26,7 @@ export function PostActions({ post }: { post: PostView }) {
         aria-pressed={e.liked}
         aria-label={e.liked ? "Unlike" : "Like"}
         disabled={like.isPending}
-        onClick={() => like.mutate(!e.liked)}
+        onClick={() => act(() => like.mutate(!e.liked))}
         className={`${btn} ${e.liked ? "text-coral-500" : ""}`}
       >
         <span aria-hidden>{e.liked ? "♥" : "♡"}</span>
@@ -35,7 +41,7 @@ export function PostActions({ post }: { post: PostView }) {
         aria-pressed={e.saved}
         aria-label={e.saved ? "Remove from saved" : "Save"}
         disabled={save.isPending}
-        onClick={() => save.mutate(!e.saved)}
+        onClick={() => act(() => save.mutate(!e.saved))}
         className={`${btn} ${e.saved ? "text-violet-600" : ""}`}
       >
         <span aria-hidden>{e.saved ? "★" : "☆"}</span>

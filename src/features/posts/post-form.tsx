@@ -1,18 +1,19 @@
 "use client";
 
 import { useAuth } from "@clerk/react";
-import { ChevronLeft, ImagePlus, Star, X } from "lucide-react";
+import { ChevronLeft, ImagePlus, MapPin, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCreatePost, useInterests, usePlaces } from "./api";
-import { MAX_PHOTOS, photoUploadsEnabled, uploadPhotos, validatePhoto } from "./media";
+import { nearestPlace, type GeoPoint } from "./geo";
+import { MAX_PHOTOS, photoUploadsEnabled, readPhotoGps, uploadPhotos, validatePhoto } from "./media";
 import { PostVisual } from "./post-visual";
 import { postFormSchema, type InterestOption, type PlaceOption } from "./schemas";
 
 const fieldClass = "min-h-11 w-full rounded-card border border-border bg-background px-4 text-base";
 const labelClass = "font-bold";
 const hintClass = "text-sm text-foreground/70";
-const STEPS = ["Add Photos", "Details", "Review"] as const;
+const STEPS = ["Photos", "Details", "Location", "Review"] as const;
 
 /** "Food › Coffee": parents first (by sort_order), children right after their parent. */
 function interestOptions(all: InterestOption[]) {
@@ -85,7 +86,9 @@ export function PostForm() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { userId, getToken } = useAuth();
-  const [photos, setPhotos] = useState<{ id: string; file: File; preview: string }[]>([]);
+  // gps: undefined = still reading the photo's metadata, null = none found.
+  const [photos, setPhotos] = useState<{ id: string; file: File; preview: string; gps: GeoPoint | null | undefined }[]>([]);
+  const [placeTouched, setPlaceTouched] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const photosRef = useRef(photos);
@@ -109,7 +112,10 @@ export function PostForm() {
         setPhotoError(problem);
         continue;
       }
-      next.push({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) });
+      const id = crypto.randomUUID();
+      next.push({ id, file, preview: URL.createObjectURL(file), gps: undefined });
+      // Read where the photo was taken from the ORIGINAL file (the upload copy has its metadata removed).
+      void readPhotoGps(file).then((gps) => setPhotos((cur) => cur.map((p) => (p.id === id ? { ...p, gps } : p))));
     }
     setPhotos(next);
   }
@@ -124,10 +130,19 @@ export function PostForm() {
   const placeChoices = useMemo(() => placeOptions(places.data ?? []), [places.data]);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
+  // Where the photo was taken -> nearest known place. Used unless the user picks something themselves.
+  const photoGps = useMemo(() => photos.find((p) => p.gps)?.gps ?? null, [photos]);
+  const readingGps = photos.some((p) => p.gps === undefined);
+  const suggestion = useMemo(
+    () => (photoGps && places.data ? nearestPlace(places.data, photoGps) : null),
+    [photoGps, places.data],
+  );
+  const placeId = placeTouched ? draft.place_id : (suggestion?.place.id ?? "");
+
   const parse = () =>
     postFormSchema.safeParse({
       interest_id: draft.interest_id,
-      place_id: orNull(draft.place_id),
+      place_id: orNull(placeId),
       title: draft.title,
       body: orNull(draft.body),
       rating: draft.rating,
@@ -135,7 +150,7 @@ export function PostForm() {
       link_url: orNull(draft.link_url),
     });
 
-  function goReview() {
+  function goLocation() {
     const parsed = parse();
     if (!parsed.success) {
       const next: Record<string, string> = {};
@@ -184,7 +199,8 @@ export function PostForm() {
   }
 
   const interest = interestChoices.find((o) => o.id === draft.interest_id);
-  const place = placeChoices.find((o) => o.id === draft.place_id);
+  const place = placeChoices.find((o) => o.id === placeId);
+  const suggestedLabel = suggestion ? placeChoices.find((o) => o.id === suggestion.place.id)?.label : undefined;
   const primary =
     "min-h-12 w-full rounded-full bg-pink-500 px-6 font-bold text-white shadow-soft hover:bg-pink-600 disabled:opacity-60";
 
@@ -297,17 +313,6 @@ export function PostForm() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label htmlFor="place_id" className={labelClass}>Location (optional)</label>
-            <select id="place_id" value={draft.place_id} onChange={(e) => set("place_id", e.target.value)} className={fieldClass}>
-              <option value="">No location</option>
-              {placeChoices.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
-              ))}
-            </select>
-            <p className={hintClass}>Not everything has a place. Skip this for gear, collectibles, online finds…</p>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label htmlFor="price_band" className={labelClass}>Price</label>
@@ -329,14 +334,73 @@ export function PostForm() {
             <button type="button" onClick={() => setStep(1)} className="inline-flex min-h-12 items-center gap-1 rounded-full border border-border px-5 font-bold hover:bg-surface">
               <ChevronLeft aria-hidden className="size-5" /> Back
             </button>
-            <button type="button" onClick={goReview} className={primary}>
-              Next: Review
+            <button type="button" onClick={goLocation} className={primary}>
+              Next: Location
             </button>
           </div>
         </div>
       )}
 
       {step === 3 && (
+        <div className="mt-6 flex flex-col gap-4">
+          <h2 className="font-display text-xl font-extrabold">Where was this taken?</h2>
+
+          {readingGps && <p className={hintClass}>Checking your photo for a location…</p>}
+          {!readingGps && suggestion && !placeTouched && (
+            <div className="flex items-start gap-3 rounded-card bg-turquoise-500/20 p-4">
+              <MapPin aria-hidden className="mt-0.5 size-5 shrink-0" />
+              <p>
+                Your photo was taken near <strong>{suggestedLabel ?? suggestion.place.name}</strong>
+                {suggestion.km >= 1 ? ` (about ${Math.round(suggestion.km)} km away)` : ""}. We&apos;ve selected it for
+                you. Change it below if that&apos;s not right.
+              </p>
+            </div>
+          )}
+          {!readingGps && photoGps && !suggestion && (
+            <p className="rounded-card bg-surface p-4 text-sm">
+              Your photo has a location, but we don&apos;t know a place near it yet. Pick the closest one below, or skip.
+            </p>
+          )}
+          {!readingGps && !photoGps && photos.length > 0 && (
+            <p className="rounded-card bg-surface p-4 text-sm">
+              No location was found in your photo (many apps remove it). You can choose a place below, or skip.
+            </p>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="place_id" className={labelClass}>Location (optional)</label>
+            <select
+              id="place_id"
+              value={placeId}
+              onChange={(e) => {
+                setPlaceTouched(true);
+                set("place_id", e.target.value);
+              }}
+              className={fieldClass}
+            >
+              <option value="">No location</option>
+              {placeChoices.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+            <p className={hintClass}>
+              Not everything has a place. Skip this for gear, collectibles, online finds… We save only the place, never
+              your photo&apos;s exact coordinates: photos are resized on your device, which removes that data.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setStep(2)} className="inline-flex min-h-12 items-center gap-1 rounded-full border border-border px-5 font-bold hover:bg-surface">
+              <ChevronLeft aria-hidden className="size-5" /> Back
+            </button>
+            <button type="button" onClick={() => setStep(4)} className={primary}>
+              Next: Review
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
         <div className="mt-6 flex flex-col gap-4">
           <h2 className="font-display text-xl font-extrabold">Review</h2>
           <article className="overflow-hidden rounded-sheet border border-border bg-surface shadow-soft">
@@ -362,8 +426,8 @@ export function PostForm() {
             </p>
           )}
           <div className="flex gap-3">
-            <button type="button" onClick={() => setStep(2)} className="inline-flex min-h-12 items-center gap-1 rounded-full border border-border px-5 font-bold hover:bg-surface">
-              <ChevronLeft aria-hidden className="size-5" /> Edit
+            <button type="button" onClick={() => setStep(3)} className="inline-flex min-h-12 items-center gap-1 rounded-full border border-border px-5 font-bold hover:bg-surface">
+              <ChevronLeft aria-hidden className="size-5" /> Back
             </button>
             <button type="button" onClick={publish} disabled={create.isPending || uploading} className={primary}>
               {uploading ? "Uploading photos…" : create.isPending ? "Publishing…" : "Publish"}

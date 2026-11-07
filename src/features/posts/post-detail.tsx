@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { z } from "zod";
-import { SignedInGate } from "@/features/auth/signed-in-gate";
+import { DataGate } from "@/features/auth/signed-in-gate";
 import { usePost, usePostMedia } from "./api";
 import type { PostView } from "./schemas";
 import { CommentsSection } from "./comments-section";
@@ -79,8 +79,8 @@ export function PostDetail() {
   const raw = useSearchParams().get("id");
   const id = raw && z.uuid().safeParse(raw).success ? raw : null;
   return (
-    <SignedInGate>
+    <DataGate>
       <Detail id={id} />
-    </SignedInGate>
+    </DataGate>
   );
 }

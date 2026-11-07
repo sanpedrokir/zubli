@@ -1,9 +1,8 @@
 "use client";
 
-import { useAuth } from "@clerk/react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { useNeon } from "@/lib/neon/use-neon";
+import { useNeon, useSession } from "@/lib/neon/use-neon";
 import {
   feedItemSchema,
   feedItemToPost,
@@ -16,7 +15,7 @@ import {
   type UploadedPhoto,
 } from "./schemas";
 
-// These hooks call useNeon()/useAuth(), so they must render under <SignedInGate>.
+// Reads work signed out (public browsing); writes need a signed-in session (RLS enforces this).
 
 const FIVE_MIN = 5 * 60 * 1000;
 const PAGE_SIZE = 20;
@@ -45,7 +44,7 @@ export function usePlaces() {
     queryFn: async () => {
       const { data, error } = await neon
         .from("places")
-        .select("id,parent_id,kind,name,posts_count")
+        .select("id,parent_id,kind,name,posts_count,lat,lng")
         .order("name")
         .limit(500);
       if (error) throw new Error(error.message);
@@ -70,9 +69,13 @@ export function usePost(id: string | null) {
 
 export function useCreatePost() {
   const neon = useNeon();
+  const { displayName, avatarUrl } = useSession();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ values, photos }: { values: PostFormValues; photos: UploadedPhoto[] }) => {
+      // Every post points at the author's profile row: make sure it exists first, and say so if it can't.
+      const { error: profileError } = await neon.rpc("ensure_profile", { p_display_name: displayName ?? "", p_avatar_url: avatarUrl ?? "" });
+      if (profileError) throw new Error(`Couldn't set up your profile: ${profileError.message}`);
       // author_id is filled by the column default auth.user_id(); clients can't send it.
       const { data, error } = await neon.from("posts").insert(values).select("id").single();
       if (error) throw new Error(error.message);
@@ -163,7 +166,7 @@ export function useFeed(opts: {
 }
 
 export function useMyPosts() {
-  const { userId } = useAuth();
+  const { userId } = useSession();
   return useFeed({ mode: "author", authorId: userId ?? null, enabled: !!userId });
 }
 

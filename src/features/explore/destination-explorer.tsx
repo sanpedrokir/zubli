@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { z } from "zod";
-import { SignedInGate } from "@/features/auth/signed-in-gate";
+import { DataGate } from "@/features/auth/signed-in-gate";
 import { useFeed, usePlaces } from "@/features/posts/api";
 import { FeedList } from "@/features/posts/feed-list";
 import { InterestChips } from "@/features/posts/interest-chips";
@@ -61,5 +61,5 @@ export function DestinationExplorer() {
   const params = useSearchParams();
   const placeId = uuid(params.get("place"));
   const interestId = uuid(params.get("interest"));
-  return <SignedInGate>{placeId ? <Results placeId={placeId} interestId={interestId} /> : <PlaceTiles />}</SignedInGate>;
+  return <DataGate>{placeId ? <Results placeId={placeId} interestId={interestId} /> : <PlaceTiles />}</DataGate>;
 }

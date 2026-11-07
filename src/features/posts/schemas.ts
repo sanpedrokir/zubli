@@ -13,6 +13,8 @@ export type InterestOption = z.infer<typeof interestSchema>;
 
 export const placeOptionSchema = z.object({
   id: z.uuid(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
   parent_id: z.uuid().nullable(),
   kind: z.enum(["country", "region", "city", "neighborhood", "venue"]),
   posts_count: z.number(),

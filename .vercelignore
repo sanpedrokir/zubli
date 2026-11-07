@@ -1,0 +1,6 @@
+# Keep the web app upload small: these are not part of the static site.
+services/
+scripts/
+db/
+docs/
+.env.blob

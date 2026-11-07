@@ -44,3 +44,8 @@ next-env.d.ts
 # nested packages (e.g. services/upload)
 **/node_modules
 **/.vercel
+
+# Vercel credentials pulled for demo seeding
+.env.blob
+
+.vercel
