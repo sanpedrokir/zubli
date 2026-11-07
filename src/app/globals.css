@@ -8,6 +8,11 @@
   --color-turquoise-500: #34d9c5;
   --color-yellow-500: #ffba54;
   --color-navy-900: #18233f;
+  /* Added from the approved UI mockups: hot-pink action/active colour + category tile colours. */
+  --color-pink-500: #ff3d8b;
+  --color-pink-600: #e62d7b;
+  --color-orange-500: #ff8a3d;
+  --color-sky-500: #3cc8e8;
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-display: var(--font-jakarta), var(--font-inter), system-ui, sans-serif;

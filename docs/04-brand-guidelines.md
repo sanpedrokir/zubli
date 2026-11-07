@@ -17,6 +17,8 @@ For in-app headers prefer a cropped/transparent export; keep the original untouc
 | turquoise | #34D9C5 | Destination mode, success |
 | yellow | #FFBA54 | Interest mode, ratings, delight |
 | navy | #18233F | Text, dark surfaces |
+| pink | #FF3D8B | Active nav, primary action in create flow, likes (added from the approved UI mockups) |
+| orange / sky | #FF8A3D / #3CC8E8 | Interest tile colours (Food, Travel) |
 
 Neutrals derive from navy (opacity steps); light background `#FFFFFF` / tint `#F7F6FF`.
 Dark mode: surface `#0F1730`, text `#F2F3FA`, brand colors unchanged.

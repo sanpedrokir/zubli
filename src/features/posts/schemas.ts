@@ -110,3 +110,13 @@ export type CommentView = z.infer<typeof commentSchema>;
 export const commentFormSchema = z.object({
   body: z.string().trim().min(1, "Write something first").max(2000, "Keep it under 2000 characters"),
 });
+
+export const profileSchema = z.object({
+  id: z.string(),
+  display_name: z.string().nullable(),
+  avatar_url: z.string().nullable(),
+  posts_count: z.number(),
+  followers_count: z.number(),
+  following_count: z.number(),
+});
+export type ProfileView = z.infer<typeof profileSchema>;

@@ -9,6 +9,7 @@ import {
   feedItemToPost,
   interestSchema,
   placeOptionSchema,
+  profileSchema,
   type FeedCursor,
   type PostFormValues,
 } from "./schemas";
@@ -126,4 +127,21 @@ export function useFeed(opts: {
 export function useMyPosts() {
   const { userId } = useAuth();
   return useFeed({ mode: "author", authorId: userId ?? null, enabled: !!userId });
+}
+
+export function useProfile(userId: string | null | undefined) {
+  const neon = useNeon();
+  return useQuery({
+    queryKey: ["profile", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await neon
+        .from("profiles")
+        .select("id,display_name,avatar_url,posts_count,followers_count,following_count")
+        .eq("id", userId!)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ? profileSchema.parse(data) : null;
+    },
+  });
 }

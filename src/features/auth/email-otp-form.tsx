@@ -1,10 +1,18 @@
 "use client";
 
 import { useAuth, useSignIn, useSignUp } from "@clerk/react";
+import { isClerkAPIResponseError } from "@clerk/react/errors";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { env } from "@/lib/env";
+
+/** Clerk API errors keep the specific code in `errors[]`; top-level `code` is generic. Check both. */
+function hasErrorCode(error: { code: string }, code: string): boolean {
+  return error.code === code || (isClerkAPIResponseError(error) && error.errors.some((e) => e.code === code));
+}
+
+const ALREADY_VERIFIED = "verification_already_verified";
 
 type Step = "email" | "code";
 type Flow = "signIn" | "signUp";
@@ -66,7 +74,7 @@ function OtpFlow() {
       return setStep("code");
     }
     // Unknown email -> create the account instead.
-    if (existing.error.code !== "form_identifier_not_found") {
+    if (!hasErrorCode(existing.error, "form_identifier_not_found")) {
       return setMessage(existing.error.longMessage ?? existing.error.message);
     }
     const created = await signUp.create({ emailAddress });
@@ -83,14 +91,18 @@ function OtpFlow() {
     const trimmed = code.trim();
     if (flow === "signIn") {
       const res = await signIn.emailCode.verifyCode({ code: trimmed });
-      if (res.error) return setMessage(res.error.longMessage ?? res.error.message);
+      if (res.error && !hasErrorCode(res.error, ALREADY_VERIFIED)) return setMessage(res.error.longMessage ?? res.error.message);
       if (signIn.status === "complete") await signIn.finalize({ navigate: goHome });
       else setMessage("Additional verification is required for this account.");
     } else {
       const res = await signUp.verifications.verifyEmailCode({ code: trimmed });
-      if (res.error) return setMessage(res.error.longMessage ?? res.error.message);
+      // A double-click can re-submit a code that already worked: carry on if the sign-up is complete.
+      if (res.error && !hasErrorCode(res.error, ALREADY_VERIFIED)) return setMessage(res.error.longMessage ?? res.error.message);
       if (signUp.status === "complete") await signUp.finalize({ navigate: goHome });
-      else setMessage("Sign-up needs more information (check required fields in Clerk).");
+      else {
+        const missing = signUp.missingFields.join(", ");
+        setMessage(`Sign-up is not complete (status: ${signUp.status}${missing ? `, missing: ${missing}` : ""}). Check the required fields in Clerk.`);
+      }
     }
   }
 
