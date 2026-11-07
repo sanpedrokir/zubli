@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LatestFeed } from "@/features/posts/latest-feed";
 
 export default function HomePage() {
   return (
@@ -23,6 +24,7 @@ export default function HomePage() {
           <p className="mt-1 text-sm">Food, sneakers, tech, collectibles — anywhere.</p>
         </Link>
       </div>
+      <LatestFeed />
     </section>
   );
 }
