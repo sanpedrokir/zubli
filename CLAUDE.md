@@ -3,10 +3,14 @@
 Read `AGENTS.md` first: this Next.js (16.x) differs from training data. Consult
 `node_modules/next/dist/docs/` before writing Next code. Specs live in `docs/`.
 
-## Product
-- Zubli = social discovery/recommendations (travel, food, drinks, shopping, tech, footwear, hobbies, collectibles, anything).
-- Two discovery modes: **Explore by Destination** and **Explore by Interest**.
-- **Location is NEVER compulsory.** `posts.place_id` is nullable; no UI or API may require a place. Interest is the required axis.
+## Product (pivot, Nov 2026 — supersedes docs/01 product spec)
+- Zubli = people of **any age** share **activity or career ideas**, organise **small gatherings** others can join, and **chat in-app** (1:1 and a group chat per gathering).
+- Core objects (db/migrations/0011): `ideas` (kind activity|career, topic), `idea_interests`, `gatherings` (+ `gathering_members`, capacity enforced by `join_gathering()`), `conversations`/`conversation_members`/`messages`.
+- Topics are a fixed list shared by ideas and gatherings: `src/features/shared/topics.ts` must match the DB check constraint.
+- **Location is NEVER compulsory.** A gathering can be online or "agreed in the chat"; `location_text` is nullable.
+- Chat has no realtime server (static export): open threads poll `conversation_messages(p_after)`; list/unread poll slower.
+- The old recommendation tables (posts, places, interests, likes…) remain in the DB but are unused by the app.
+- Look & feel: light theme from the approved mockups (white, navy text, pink actions/active tab, violet segmented toggles, colourful topic tiles, photo-led cards).
 
 ## Stack
 Next.js App Router · TypeScript (strict) · Tailwind CSS v4 · Neon Postgres (via Neon Data API) · Clerk (email OTP auth).
@@ -36,7 +40,7 @@ Browser APIs only in `useEffect`/client components.
 
 ## Brand
 Violet #7864FF · Coral #FF647F · Turquoise #34D9C5 · Yellow #FFBA54 · Navy #18233F.
-Destination mode = turquoise, Interest mode = yellow. Logo: `public/brand/zubli-icon.png` — never alter it.
+Activity ideas = turquoise, Career ideas = yellow. Logo: `public/brand/zubli-icon.png` — never alter it.
 Use Tailwind theme tokens, not raw hex, in components.
 
 ## Workflow

@@ -11,7 +11,9 @@
     "db:migrate": "node --env-file=.env.local scripts/db.mjs migrate",
     "db:seed": "node --env-file=.env.local scripts/db.mjs seed",
     "db:demo": "node --env-file=.env.local --env-file=.env.blob scripts/demo-seed.mjs",
-    "db:demo:remove": "node --env-file=.env.local --env-file=.env.blob scripts/demo-seed.mjs --remove"
+    "db:demo:remove": "node --env-file=.env.local --env-file=.env.blob scripts/demo-seed.mjs --remove",
+    "db:demo:ideas": "node --env-file=.env.local scripts/demo-gatherings.mjs",
+    "db:demo:ideas:remove": "node --env-file=.env.local scripts/demo-gatherings.mjs --remove"
   },
   "dependencies": {
     "@clerk/react": "^6.18.6",

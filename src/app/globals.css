@@ -8,7 +8,7 @@
   --color-turquoise-500: #34d9c5;
   --color-yellow-500: #ffba54;
   --color-navy-900: #18233f;
-  /* Added from the approved UI mockups: hot-pink action/active colour + category tile colours. */
+  /* From the approved UI mockups: hot-pink action/active colour + category tile colours. */
   --color-pink-500: #ff3d8b;
   --color-pink-600: #e62d7b;
   --color-orange-500: #ff8a3d;
@@ -19,29 +19,25 @@
 
   --radius-card: 1rem;
   --radius-sheet: 1.5rem;
-  --shadow-soft: 0 6px 24px -8px rgb(24 35 63 / 0.18);
+  --shadow-soft: 0 6px 22px -8px rgb(24 35 63 / 0.22);
 }
 
+/* Light theme, as in the approved mockups: white screens, navy text, soft navy-tinted shadows. */
 :root {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #18233f;
-  --surface: #f7f6ff;
+  /* Cards and panels sit on white with a hairline border + soft shadow; `muted` is the light tint for inputs/chips. */
+  --surface: #ffffff;
+  --muted: #f4f3fa;
   --border: rgb(24 35 63 / 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f1730;
-    --foreground: #f2f3fa;
-    --surface: #18233f;
-    --border: rgb(242 243 250 / 0.12);
-  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-muted: var(--muted);
   --color-border: var(--border);
 }
 
@@ -56,9 +52,22 @@ body {
   outline-offset: 2px;
 }
 
+/* Hide the scrollbar on horizontal chip rows (they stay scrollable by touch, wheel and keyboard). */
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

@@ -18,14 +18,14 @@ type Step = "email" | "code";
 type Flow = "signIn" | "signUp";
 
 const inputClass =
-  "min-h-11 w-full rounded-card border border-border bg-background px-4 text-base";
+  "min-h-11 w-full rounded-card border border-border bg-surface px-4 text-base focus:border-violet-500 focus:outline-none";
 const buttonClass =
-  "min-h-11 w-full rounded-full bg-violet-600 px-4 font-bold text-white shadow-soft hover:bg-violet-500 disabled:opacity-60";
+  "min-h-11 w-full rounded-full bg-pink-500 px-4 font-bold text-white shadow-soft hover:bg-pink-600 disabled:opacity-60";
 
 export function EmailOtpForm() {
   if (!env.clerkPublishableKey) {
     return (
-      <p className="rounded-card bg-surface p-4 text-sm">
+      <p className="rounded-card bg-muted p-4 text-sm">
         Sign-in is not configured yet. Set <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> in{" "}
         <code>.env.local</code>.
       </p>
@@ -51,7 +51,7 @@ function OtpFlow() {
     return (
       <p>
         You are signed in.{" "}
-        <Link className="font-bold text-violet-600" href="/">
+        <Link className="font-bold text-pink-500" href="/">
           Go home
         </Link>
       </p>

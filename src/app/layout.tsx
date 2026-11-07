@@ -13,12 +13,12 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: { default: "Zubli", template: "%s · Zubli" },
-  description: "Discover and share recommendations — by destination or by interest.",
+  description: "Share activity and career ideas, organise small gatherings, and chat with people who want to join.",
   icons: { icon: "/brand/zubli-icon.png", apple: "/brand/zubli-icon.png" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#7864FF",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
 };
