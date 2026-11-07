@@ -1,4 +1,5 @@
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { issueSignedToken } from "@vercel/blob";
+import { handleUploadPresigned, type HandleUploadPresignedBody } from "@vercel/blob/client";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 /**
@@ -6,7 +7,8 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
  * Lives outside the static-export app because it needs a server (Blob token + token minting).
  *
  * Env (set in the Vercel project):
- *   BLOB_READ_WRITE_TOKEN  added automatically when a Blob store is connected to the project
+ *   BLOB_STORE_ID, BLOB_WEBHOOK_PUBLIC_KEY  added automatically when a Blob store is connected to the project
+ *     (auth to Blob uses Vercel OIDC, so no long-lived read-write token is stored)
  *   CLERK_ISSUER           Clerk Frontend API URL, e.g. https://tender-moose-9438.clerk.accounts.dev
  *   ALLOWED_ORIGINS        comma-separated app origins, e.g. http://localhost:3000,https://zubli.app
  */
@@ -62,29 +64,31 @@ export async function POST(request: Request) {
   const userId = await authenticate(request);
   if (!userId) return json(request, { error: "Unauthorized" }, 401);
 
-  let body: HandleUploadBody;
+  let body: HandleUploadPresignedBody;
   try {
-    body = (await request.json()) as HandleUploadBody;
+    body = (await request.json()) as HandleUploadPresignedBody;
   } catch {
     return json(request, { error: "Invalid body" }, 400);
   }
 
   try {
-    const result = await handleUpload({
+    const result = await handleUploadPresigned({
       request,
       body,
-      onBeforeGenerateToken: async (pathname) => {
+      getSignedToken: async (pathname) => {
         // Users may only write inside their own folder: post-media/<userId>/<file>
         const prefix = `post-media/${userId}/`;
         if (!pathname.startsWith(prefix) || !FILE_NAME.test(pathname.slice(prefix.length))) {
           throw new Error("Invalid upload path");
         }
-        return {
+        const token = await issueSignedToken({
+          pathname,
+          operations: ["put"],
           allowedContentTypes: CONTENT_TYPES,
           maximumSizeInBytes: MAX_BYTES,
-          addRandomSuffix: true,
-          tokenPayload: JSON.stringify({ userId }),
-        };
+          validUntil: Date.now() + 5 * 60 * 1000,
+        });
+        return { token };
       },
     });
     return json(request, result);

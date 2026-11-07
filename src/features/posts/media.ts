@@ -1,6 +1,6 @@
 "use client";
 
-import { upload } from "@vercel/blob/client";
+import { uploadPresigned } from "@vercel/blob/client";
 import { env } from "@/lib/env";
 import type { UploadedPhoto } from "./schemas";
 
@@ -57,7 +57,7 @@ export async function uploadPhotos(
   const results: UploadedPhoto[] = [];
   for (const file of files) {
     const { blob, width, height } = await compressPhoto(file);
-    const uploaded = await upload(`post-media/${userId}/${crypto.randomUUID()}.${extensionFor(blob.type)}`, blob, {
+    const uploaded = await uploadPresigned(`post-media/${userId}/${crypto.randomUUID()}.${extensionFor(blob.type)}`, blob, {
       access: "public",
       handleUploadUrl: env.uploadApiUrl,
       headers: { Authorization: `Bearer ${token}` },

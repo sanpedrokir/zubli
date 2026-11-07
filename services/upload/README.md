@@ -6,7 +6,7 @@ export and cannot host server code, so this is deployed as its **own Vercel proj
 
 ## Deploy
 1. Vercel dashboard > Add New > Project > import this repo, set **Root Directory** to `services/upload`.
-2. Storage tab > Create a **Blob** store and connect it to the project (adds `BLOB_READ_WRITE_TOKEN`).
+2. Create a **public Blob** store (`vercel blob create-store <name> --access public`) and connect it to the project (dashboard > project > Storage). This adds `BLOB_STORE_ID` and `BLOB_WEBHOOK_PUBLIC_KEY`; the function authenticates to Blob with Vercel OIDC, so no read-write token is stored.
 3. Environment variables:
    - `CLERK_ISSUER` = your Clerk Frontend API URL (e.g. `https://tender-moose-9438.clerk.accounts.dev`)
    - `ALLOWED_ORIGINS` = comma-separated app origins (e.g. `http://localhost:3000,https://your-app-domain`)
