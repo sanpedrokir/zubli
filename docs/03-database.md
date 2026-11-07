@@ -1,4 +1,5 @@
 # Zubli — Database Design (Supabase Postgres)
+> **Superseded in part:** Supabase (Auth/Storage/Edge Functions) was replaced by Neon + Clerk. See `docs/06-neon-clerk-decision.md`.
 
 All tables in `public`, RLS enabled on every one. IDs `uuid default gen_random_uuid()`,
 timestamps `timestamptz default now()`. Extensions: `pg_trgm`, `unaccent`, `citext`;

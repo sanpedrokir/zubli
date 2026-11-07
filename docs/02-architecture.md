@@ -1,4 +1,5 @@
 # Zubli — Technical Architecture
+> **Superseded in part:** Supabase (Auth/Storage/Edge Functions) was replaced by Neon + Clerk. See `docs/06-neon-clerk-decision.md`.
 
 ## Stack
 Next.js (App Router, 16.4.5 installed) · TypeScript strict · Tailwind CSS v4 ·

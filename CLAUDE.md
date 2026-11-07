@@ -9,7 +9,8 @@ Read `AGENTS.md` first: this Next.js (16.x) differs from training data. Consult
 - **Location is NEVER compulsory.** `posts.place_id` is nullable; no UI or API may require a place. Interest is the required axis.
 
 ## Stack
-Next.js App Router · TypeScript (strict) · Tailwind CSS v4 · Supabase (Postgres, Auth, Storage, Edge Functions).
+Next.js App Router · TypeScript (strict) · Tailwind CSS v4 · Neon Postgres (via Neon Data API) · Clerk (email OTP auth).
+See `docs/06-neon-clerk-decision.md`, which supersedes the Supabase assumptions in docs 02/03.
 Web first. No React Native, Expo, Swift, Kotlin or Capacitor until Milestone 8.
 
 ## Static-export compatibility (hard rule)
@@ -19,12 +20,14 @@ Draft Mode, intercepting routes, the default `next/image` loader, `cacheComponen
 Dynamic user-content routes use query params (`/post?id=`), not unenumerable `[id]` segments.
 Browser APIs only in `useEffect`/client components.
 
-## Supabase
-- RLS enabled with explicit policies on every table; schema changes only via `supabase/migrations`.
-- Client uses the anon key only. Service-role key and secrets never reach the client or git.
-- Privileged operations (moderation, account deletion, upload validation, secrets) go in Edge Functions.
+## Neon + Clerk
+- The browser talks to Neon only through the Neon Data API (`@neon/postgrest-js`) with the user's Clerk JWT (template `neon`, claim `role: authenticated`). Never use `DATABASE_URL` or a Neon driver in browser code.
+- `DATABASE_URL` and Clerk secret keys live only in `.env.local`/tooling, never in `NEXT_PUBLIC_*`, code or git.
+- RLS enabled with explicit policies and grants to `authenticated` on every table; use `auth.user_id()` (text Clerk id). User/author ids are `text`.
+- Schema changes only via `db/migrations/*.sql`.
+- Auth is Clerk email one-time-code via `@clerk/react` (not `@clerk/nextjs`: static export has no middleware). First login creates the `profiles` row (`ProfileSync`).
+- Privileged operations (moderation, deletion, secrets) need a serverless function outside the static app (decide in M3/M7).
 - Consistency-critical logic (counters, feeds, search) lives in Postgres triggers/RPC; keyset pagination.
-- Regenerate types to `src/lib/supabase/types.gen.ts` after migrations.
 
 ## Code
 - Feature folders in `src/features/*`; `src/app` stays thin; UI primitives in `src/components/ui`.

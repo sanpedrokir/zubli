@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/react": "^6.18.6",
+    "@neon/postgrest-js": "^0.3.0",
     "next": "16.4.5",
     "react": "19.3.0",
     "react-dom": "19.3.0"
